@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蛙蛙翻译 v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-6xl w-full">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">蛙蛙翻译 v1.0</h1>
+
+        <!-- 翻译选项 -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="w-1/3">
+                <label for="source_lang" class="block text-sm font-medium text-gray-700">源语言</label>
+                <select id="source_lang"
+                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="zh" selected>中文</option>
+                    <option value="en">英语</option>
+                </select>
+            </div>
+            <div class="w-1/3">
+                <label for="target_lang" class="block text-sm font-medium text-gray-700">目标语言</label>
+                <select id="target_lang"
+                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="en">英语</option>
+                    <option value="zh">中文</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 输入输出框 -->
+        <div class="flex space-x-4">
+            <!-- 输入框 -->
+            <div class="w-1/2">
+                <label for="source_text" class="block text-sm font-medium text-gray-700">源文本</label>
+                <textarea id="source_text" rows="8"
+                    class="border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full"></textarea>
+            </div>
+
+            <!-- 输出框 -->
+            <div class="w-1/2">
+                <label for="target_text" class="block text-sm font-medium text-gray-700">翻译结果</label>
+                <div class="relative">
+                    <textarea id="target_text" rows="8" readonly
+                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50 sm:text-sm"></textarea>
+                    <!-- 加载提示 -->
+                    <div id="loading"
+                        class="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-50 hidden">
+                        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                    </div>
+                    <button id="copy_button"
+                        class="mt-2 w-full bg-indigo-500 text-white py-2 rounded-md shadow hover:bg-indigo-600">
+                        复制翻译结果
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="alert" class="mt-2 hidden bg-gray-50 p-4 rounded-lg"></div>
+        <footer class="text-center py-4">
+            <p class="text-sm">&copy; 2024 Your Wawasoft. All rights reserved.</p>
+        </footer>
+    </div>
+
+
+    <script>
+        // 获取 DOM 元素
+        const sourceText = document.getElementById('source_text');
+        const targetText = document.getElementById('target_text');
+        const sourceLang = document.getElementById('source_lang');
+        const targetLang = document.getElementById('target_lang');
+        const loadingIndicator = document.getElementById('loading');
+        const copyButton = document.getElementById('copy_button');
+
+        let debounceTimeout;
+
+        // 实时翻译功能
+        const translateText = async () => {
+            const text = sourceText.value;
+            const source_lang = sourceLang.value;
+            const target_lang = targetLang.value;
+
+            if (!text.trim()) {
+                targetText.value = '';
+                return;
+            }
+
+            // 显示加载提示
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`https://fanyi.onlytiancai.workers.dev/?text=${encodeURIComponent(text)}&source_lang=${source_lang}&target_lang=${target_lang}`);
+                const data = await response.json();
+
+                if (response.ok && data.response.translated_text) {
+                    targetText.value = data.response.translated_text;
+                } else {
+                    targetText.value = '翻译失败，请稍后重试！';
+                }
+            } catch (error) {
+                console.error('翻译失败：', error);
+                targetText.value = '翻译失败，请检查网络或稍后重试！';
+            } finally {
+                // 隐藏加载提示
+                loadingIndicator.classList.add('hidden');
+            }
+        };
+
+        // 添加 debounce 处理
+        const debounce = (func, delay) => {
+            return (...args) => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => func(...args), delay);
+            };
+        };
+
+        function showAlert(message) {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.textContent = message;
+            alertDiv.classList.remove('hidden');
+            setTimeout(() => alertDiv.classList.add('hidden'), 3000);
+        }
+
+
+        // 实时监听输入框变化
+        sourceText.addEventListener('input', debounce(translateText, 500));
+
+        // 复制功能
+        copyButton.addEventListener('click', () => {
+            if (targetText.value.trim()) {
+                navigator.clipboard.writeText(targetText.value)
+                    .then(() => showAlert('翻译结果已复制到剪贴板！'))
+                    .catch(err => showAlert('复制失败，请手动复制！'));
+            } else {
+                showAlert('没有翻译结果可供复制！');
+            }
+        });
+    </script>
+</body>
+
+</html>
